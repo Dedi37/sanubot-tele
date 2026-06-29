@@ -10,7 +10,7 @@ load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL_NAME = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+MODEL_NAME = "openrouter/free"
 
 # Setup logging
 logging.basicConfig(
