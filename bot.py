@@ -23,6 +23,7 @@ GROQ_API_KEY = read_env_value("GROQ_API_KEY", "groq_api_key")
 GOOGLE_API_KEY = read_env_value("GOOGLE_API_KEY", "google_api_key")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
 SUPPORTED_PROVIDERS = {
     "openrouter": "OpenRouter",
     "groq": "Groq",
@@ -118,7 +119,13 @@ def ask_groq(user_message: str, context: ContextTypes.DEFAULT_TYPE | None = None
         data = response.json()
 
         if "choices" in data and len(data["choices"]) > 0:
-            return data["choices"][0]["message"]["content"]
+            choice = data["choices"][0]
+            message = choice.get("message", {})
+            content = message.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list) and len(content) > 0:
+                return content[0].get("text", "Maaf, saya tidak menerima respon valid dari AI.")
         return "Maaf, saya tidak menerima respon valid dari AI."
 
     except Exception as e:
@@ -131,10 +138,15 @@ def ask_google(user_message: str, context: ContextTypes.DEFAULT_TYPE | None = No
     if not api_key:
         return "API key Google AI Studio belum tersedia. Silakan isi di .env atau kirim /setkey google <api_key>."
 
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1/models/{GOOGLE_MODEL}:generateMessage?key={api_key}"
     payload = {
-        "contents": [
-            {"parts": [{"text": user_message}]}
+        "messages": [
+            {
+                "author": "user",
+                "content": [
+                    {"type": "text", "text": user_message}
+                ]
+            }
         ]
     }
 
@@ -144,9 +156,11 @@ def ask_google(user_message: str, context: ContextTypes.DEFAULT_TYPE | None = No
         data = response.json()
 
         if "candidates" in data and len(data["candidates"]) > 0:
-            parts = data["candidates"][0].get("content", {}).get("parts", [])
-            if parts:
-                return parts[0].get("text", "Maaf, saya tidak menerima respon valid dari AI.")
+            content = data["candidates"][0].get("content", [])
+            if content and isinstance(content, list):
+                for item in content:
+                    if item.get("type") == "text":
+                        return item.get("text", "Maaf, saya tidak menerima respon valid dari AI.")
         return "Maaf, saya tidak menerima respon valid dari AI."
 
     except Exception as e:
